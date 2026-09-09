@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mockup Location System - Tukar Hari Kerja</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { jakarta: ['Plus Jakarta Sans', 'sans-serif'] },
+          boxShadow: { soft: '0 12px 35px rgba(15, 23, 42, 0.08)' }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: "Plus Jakarta Sans", sans-serif; }
+    .main-view { display: none; }
+    .main-view.active { display: block; }
+    .top-tab.active {
+      background: rgb(79 70 229);
+      color: white;
+      box-shadow: 0 10px 25px rgba(79, 70, 229, .22);
+    }
+    button:focus-visible, [tabindex]:focus-visible { outline: 2px solid #6366f1; outline-offset: 3px; }
+    button:disabled { cursor: not-allowed; opacity: .5; }
+    #pdfLetter tr { vertical-align: top; }
+    #letterPreview { display: none; }
+    body.viewing-letter #app, body.viewing-letter #toast { display: none; }
+    body.viewing-letter #letterPreview { display: block; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+    #pdfLetter {
+      width: 210mm;
+      min-height: 296mm;
+      box-sizing: border-box;
+      max-width: 100%;
+      margin: 0 auto;
+      position: relative;
+      background: white;
+      color: #0f172a;
+      padding: 14mm 18mm 20mm;
+      font-family: Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.25;
+    }
+    #pdfLetter .letter-section { margin-top: 10px; }
+    #pdfLetter .letter-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    #pdfLetter .letter-signature { margin-top: 18px; break-inside: avoid; }
+    #pdfLetter .signature-space { height: 40px; }
+    #pdfLetter .letter-footer { position: absolute; left: 0; right: 0; bottom: 0; height: 12mm; background: #4f46e5; }
+    @media screen and (max-width: 640px) {
+      #pdfLetter { padding: 24px 24px 20mm; }
+      #pdfLetter .letter-dates { grid-template-columns: 1fr; }
+    }
+    @page { size: A4; margin: 0; }
+    @media print {
+      body.printing-letter { background: white; }
+      body.printing-letter > :not(#letterPreview) { display: none !important; }
+      body.printing-letter #letterPreview { display: block; padding: 0; margin: 0; max-width: none; }
+      #letterToolbar { display: none !important; }
+      #pdfLetter {
+        width: 210mm;
+        max-width: none;
+        box-shadow: none;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <div id="app" class="min-h-screen">
+    <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <div class="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <div class="flex items-center gap-3">
+          <div class="grid h-11 w-11 place-items-center rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-200">
+            <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 21s7-4.35 7-11a7 7 0 1 0-14 0c0 6.65 7 11 7 11Z"/>
+              <circle cx="12" cy="10" r="2.5"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-indigo-600">Digitaliz Location System</p>
+            <h1 class="text-lg font-extrabold tracking-tight text-slate-950">Employee Status & Request</h1>
+          </div>
+        </div>
+
+        <div class="hidden items-center gap-2 rounded-2xl bg-slate-100 p-1.5 md:flex">
+          <button class="top-tab active rounded-xl px-4 py-2 text-sm font-bold transition" data-target="employee">Employee</button>
+          <button class="top-tab rounded-xl px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-white" data-target="management">Management</button>
+          <button class="top-tab rounded-xl px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-white" data-target="public">Public</button>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="hidden text-right sm:block">
+            <p class="text-sm font-bold text-slate-900">Fachrie</p>
+            <p class="text-xs text-slate-500">Programmer</p>
+          </div>
+          <div class="grid h-10 w-10 place-items-center rounded-full bg-slate-900 text-sm font-extrabold text-white">F</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
+      <div class="mb-5 flex gap-2 overflow-x-auto md:hidden">
+        <button class="top-tab active whitespace-nowrap rounded-xl bg-white px-4 py-2 text-sm font-bold shadow-sm" data-target="employee">Employee</button>
+        <button class="top-tab whitespace-nowrap rounded-xl bg-white px-4 py-2 text-sm font-bold shadow-sm" data-target="management">Management</button>
+        <button class="top-tab whitespace-nowrap rounded-xl bg-white px-4 py-2 text-sm font-bold shadow-sm" data-target="public">Public</button>
+      </div>
+
+      <!-- EMPLOYEE -->
+      <section id="employee" class="main-view active">
+        <div class="mb-6">
+          <div class="mb-2 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
+            Employee Portal
+          </div>
+          <h2 class="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Pengajuan Karyawan</h2>
+          <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+            Ajukan pertukaran hari kerja. Setiap pengajuan akan dikirim ke Management untuk diperiksa dan disetujui.
+          </p>
+        </div>
+
+        <!-- SWAP DAY -->
+        <div id="swapPanel" class="employee-panel active">
+          <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <form id="swapForm" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
+              <div class="mb-6 flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
+                <div>
+                  <p class="text-lg font-extrabold text-slate-950">Form Tukar Hari Kerja</p>
+                  <p class="mt-1 text-sm text-slate-500">Gunakan saat bekerja di hari libur dan ingin mengganti hari kerja lain menjadi hari libur.</p>
+                </div>
+                <span class="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">Draft</span>
+              </div>
+
+              <div class="grid gap-5 sm:grid-cols-2">
+                <label>
+                  <span class="mb-2 block text-sm font-bold text-slate-700">Nama Karyawan</span>
+                  <input id="swapName" value="Fachrie" readonly class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 outline-none">
+                </label>
+                <label>
+                  <span class="mb-2 block text-sm font-bold text-slate-700">Divisi</span>
+                  <input id="swapDivision" value="Programmer" readonly class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 outline-none">
+                </label>
+                <label>
+                  <span class="mb-2 block text-sm font-bold text-slate-700">NRP</span>
+                  <input id="swapNrp" value="DGT-001" readonly class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 outline-none">
+                </label>
+              </div>
+
+              <div class="my-6 border-t border-slate-100"></div>
+
+              <div class="grid gap-5 sm:grid-cols-2">
+                <fieldset class="min-w-0">
+                  <legend class="mb-2 text-sm font-bold text-slate-700">Hari Overtime</legend>
+                  <div id="overtimeDates" class="space-y-2">
+                    <div class="flex items-center gap-2">
+                      <input type="date" name="overtime" aria-label="Hari Overtime" required value="2026-09-06" class="min-w-0 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100">
+                      <button type="button" data-remove-date disabled aria-label="Hapus tanggal hari overtime" class="rounded-lg px-2 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-30">Hapus</button>
+                    </div>
+                  </div>
+                  <button type="button" onclick="addDate('overtime')" class="mt-3 rounded-lg px-2 py-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50">+ Tambah Tanggal</button>
+                  <p class="mt-1 text-xs leading-5 text-slate-500">Bisa memilih lebih dari satu tanggal.</p>
+                </fieldset>
+                <fieldset class="min-w-0">
+                  <legend class="mb-2 text-sm font-bold text-slate-700">Hari Pengganti Libur</legend>
+                  <div id="replacementDates" class="space-y-2">
+                    <div class="flex items-center gap-2">
+                      <input type="date" name="replacement" aria-label="Hari Pengganti Libur" required value="2026-09-07" class="min-w-0 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100">
+                      <button type="button" data-remove-date disabled aria-label="Hapus tanggal hari pengganti libur" class="rounded-lg px-2 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-30">Hapus</button>
+                    </div>
+                  </div>
+                  <button type="button" onclick="addDate('replacement')" class="mt-3 rounded-lg px-2 py-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50">+ Tambah Tanggal</button>
+                  <p class="mt-1 text-xs leading-5 text-slate-500">Bisa memilih lebih dari satu tanggal.</p>
+                </fieldset>
+
+                <label class="sm:col-span-2">
+                  <span class="mb-2 block text-sm font-bold text-slate-700">Alasan Bekerja di Hari Libur</span>
+                  <textarea id="swapReason" required rows="4" class="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium leading-6 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100">Menyelesaikan pekerjaan yang harus selesai sebelum jadwal produksi berikutnya.</textarea>
+                </label>
+
+                <label class="sm:col-span-2">
+                  <span class="mb-2 block text-sm font-bold text-slate-700">Catatan untuk Management</span>
+                  <textarea id="swapNote" rows="3" placeholder="Opsional." class="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"></textarea>
+                </label>
+              </div>
+
+              <div class="mt-6 rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                <p class="text-sm font-bold text-amber-900">Ringkasan pengajuan</p>
+                <p id="swapSummary" aria-live="polite" class="mt-1 text-sm leading-6 text-amber-800">
+                  Karyawan bekerja pada Minggu, 6 September 2026. Jika disetujui, Senin, 7 September 2026 menjadi hari libur pengganti.
+                </p>
+              </div>
+
+              <button type="submit" class="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3 text-sm font-extrabold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-700">
+                Ajukan Tukar Hari Kerja
+              </button>
+            </form>
+
+            <aside class="space-y-4">
+              <div class="rounded-3xl border border-violet-100 bg-violet-50 p-5">
+                <div class="grid h-11 w-11 place-items-center rounded-2xl bg-white text-violet-600 shadow-sm">
+                  <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M7 7h11l-3-3m3 3-3 3"/>
+                    <path d="M17 17H6l3 3m-3-3 3-3"/>
+                  </svg>
+                </div>
+                <p class="mt-4 font-extrabold text-violet-950">1 hari bekerja ditukar 1 hari libur</p>
+                <p class="mt-2 text-sm leading-6 text-violet-900/70">
+                  Tambahkan tanggal sesuai kebutuhan. Jumlah hari overtime dan hari pengganti libur harus sama. Management memeriksa pengajuan dan membuka surat untuk dicetak.
+                </p>
+              </div>
+
+              <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p class="font-extrabold text-slate-950">Informasi yang dilihat Management</p>
+                <div class="mt-4 space-y-3 text-sm text-slate-600">
+                  <p>Nama, divisi, dan NRP</p>
+                  <p>Hari overtime</p>
+                  <p>Hari pengganti libur</p>
+                  <p>Alasan bekerja di hari libur</p>
+                  <p>Catatan dari karyawan</p>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <!-- MANAGEMENT -->
+      <section id="management" class="main-view">
+        <div class="mb-6">
+          <div class="mb-2 inline-flex items-center rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">Management Portal</div>
+          <h2 class="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Review Pengajuan</h2>
+          <p class="mt-2 text-sm text-slate-500">Periksa pengajuan tukar hari kerja, buka surat untuk dicetak, dan lihat history persetujuan.</p>
+        </div>
+
+        <div class="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Menunggu Review</p>
+            <p class="mt-2 text-3xl font-extrabold text-slate-950" id="pendingCount">1</p>
+          </div>
+          <div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
+            <p class="text-xs font-bold uppercase tracking-wider text-emerald-600">Total Disetujui</p>
+            <p class="mt-2 text-3xl font-extrabold text-emerald-950" id="approvedCount">1</p>
+          </div>
+          <div class="rounded-2xl border border-indigo-100 bg-indigo-50 p-5">
+            <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">Ditolak</p>
+            <p class="mt-2 text-3xl font-extrabold text-indigo-950" id="rejectedCount">0</p>
+          </div>
+          <div class="rounded-2xl border border-violet-100 bg-violet-50 p-5">
+            <p class="text-xs font-bold uppercase tracking-wider text-violet-600">Tukar Hari Kerja</p>
+            <p class="mt-2 text-3xl font-extrabold text-violet-950" id="totalCount">2</p>
+          </div>
+        </div>
+
+        <div class="grid gap-6 xl:grid-cols-[390px_minmax(0,1fr)]">
+          <div id="requestList" class="space-y-3"></div>
+
+          <div id="managementDetail" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-soft sm:p-6">
+            <div class="flex flex-col justify-between gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-center">
+              <div>
+                <div class="mb-2 flex flex-wrap items-center gap-2">
+                  <span id="detailStatus" class="rounded-full bg-amber-50 px-3 py-1 text-xs font-extrabold text-amber-700">Menunggu Persetujuan</span>
+                  <span id="detailType" class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-extrabold text-indigo-700">Tukar Hari Kerja</span>
+                </div>
+                <h3 id="detailTitle" class="text-xl font-extrabold text-slate-950">Pengajuan Tukar Hari Kerja</h3>
+                <p id="detailSub" class="mt-1 text-sm text-slate-500">Diajukan oleh Fachrie pada 4 September 2026, 10:24</p>
+              </div>
+              <button id="managementLetter" onclick="openLetter(selectedRequestId)" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 hover:text-indigo-700">Lihat Surat</button>
+            </div>
+
+            <div class="mt-6 grid gap-3 sm:grid-cols-3">
+              <div class="rounded-2xl bg-slate-50 p-4">
+                <p class="text-xs font-bold text-slate-400">Nama</p>
+                <p id="detailName" class="mt-1 text-sm font-extrabold text-slate-900"></p>
+              </div>
+              <div class="rounded-2xl bg-slate-50 p-4">
+                <p class="text-xs font-bold text-slate-400">Divisi</p>
+                <p id="detailDivision" class="mt-1 text-sm font-extrabold text-slate-900"></p>
+              </div>
+              <div class="rounded-2xl bg-slate-50 p-4">
+                <p class="text-xs font-bold text-slate-400">NRP</p>
+                <p id="detailNrp" class="mt-1 text-sm font-extrabold text-slate-900"></p>
+              </div>
+            </div>
+
+            <div id="swapDetailContent" class="mt-6">
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div class="rounded-2xl border border-violet-100 bg-violet-50 p-5">
+                  <p class="text-xs font-bold uppercase tracking-wider text-violet-500">Hari Overtime</p>
+                  <p id="detailOvertime" class="mt-2 whitespace-pre-line text-base font-extrabold text-violet-950">Minggu, 6 September 2026</p>
+                </div>
+                <div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
+                  <p class="text-xs font-bold uppercase tracking-wider text-emerald-500">Hari Pengganti Libur</p>
+                  <p id="detailReplacement" class="mt-2 whitespace-pre-line text-base font-extrabold text-emerald-950">Senin, 7 September 2026</p>
+                </div>
+              </div>
+
+              <div class="mt-4 rounded-2xl border border-slate-200 p-4">
+                <p class="text-xs font-bold text-slate-400">Alasan Bekerja di Hari Libur</p>
+                <p id="detailReason" class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">Menyelesaikan pekerjaan yang harus selesai sebelum jadwal produksi berikutnya.</p>
+              </div>
+
+              <div class="mt-4 rounded-2xl border border-slate-200 p-4">
+                <p class="text-xs font-bold text-slate-400">Catatan dari Karyawan</p>
+                <p id="detailNote" class="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700"></p>
+              </div>
+            </div>
+
+            <div id="decisionControls"><label class="mt-5 block">
+              <span class="mb-2 block text-sm font-extrabold text-slate-800">Catatan Keputusan</span>
+              <textarea id="decisionNote" rows="3" placeholder="Tambahkan catatan jika diperlukan..." class="w-full resize-none rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"></textarea>
+            </label>
+
+            <div class="mt-5 grid gap-3 sm:grid-cols-2">
+              <button onclick="decision('reject')" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-extrabold text-rose-700 hover:bg-rose-100">Tolak Pengajuan</button>
+              <button onclick="decision('approve')" class="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-extrabold text-white shadow-lg shadow-emerald-100 hover:bg-emerald-700">Setujui Pengajuan</button>
+            </div></div>
+          </div>
+        </div>
+
+        <div class="mt-6 min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-soft">
+          <div class="border-b border-slate-100 p-5 sm:p-6">
+            <h3 class="text-lg font-extrabold text-slate-950">History Pengajuan Disetujui</h3>
+            <p class="mt-1 text-sm text-slate-500">Daftar pertukaran hari kerja yang telah disetujui Management.</p>
+          </div>
+          <div class="overflow-x-auto" role="region" aria-label="History pengajuan disetujui" tabindex="0">
+            <table class="w-full min-w-[1000px] text-left text-sm">
+              <thead class="bg-slate-50 text-xs font-bold text-slate-500">
+                <tr>
+                  <th scope="col" class="px-5 py-4">Nama / NRP</th>
+                  <th scope="col" class="px-5 py-4">Divisi</th>
+                  <th scope="col" class="px-5 py-4">Hari Overtime</th>
+                  <th scope="col" class="px-5 py-4">Hari Pengganti Libur</th>
+                  <th scope="col" class="px-5 py-4">Alasan</th>
+                  <th scope="col" class="px-5 py-4">Disetujui</th>
+                  <th scope="col" class="px-5 py-4">Surat</th>
+                </tr>
+              </thead>
+              <tbody id="historyBody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PUBLIC -->
+      <section id="public" class="main-view">
+        <div class="mb-6 overflow-hidden rounded-3xl bg-slate-950 p-6 text-white sm:p-8">
+          <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-indigo-200">Public Information</span>
+          <h2 class="mt-4 text-3xl font-extrabold tracking-tight">Status Pertukaran Hari Kerja</h2>
+          <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Hanya pengajuan yang sudah disetujui Management yang ditampilkan.</p>
+        </div>
+
+        <div id="publicCards" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite" class="pointer-events-none fixed bottom-5 right-5 z-50 translate-y-4 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-bold text-white opacity-0 shadow-2xl transition-all duration-300"></div>
+
+  <section id="letterPreview" aria-label="Tampilan surat pertukaran hari kerja" class="mx-auto max-w-[900px] px-4 py-6">
+    <div id="letterToolbar" class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+      <button id="closeLetter" onclick="closeLetter()" class="rounded-xl border border-indigo-200 px-4 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-50">Kembali ke Management</button>
+      <p class="text-sm text-slate-500">Tekan <kbd class="font-bold text-slate-800">Ctrl+P</kbd> untuk mencetak atau menyimpan sebagai PDF.</p>
+    </div>
+  <article id="pdfLetter" class="shadow-soft">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div id="pdfDate">Banjarmasin, 4 September 2026</div>
+      <div style="font-weight:700;color:#4f46e5;">DIGITALIZ</div>
+    </div>
+
+    <div class="letter-section">
+      Hal&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <span id="pdfSubject">Pengajuan Tukar Hari Kerja</span>
+    </div>
+
+    <div class="letter-section">
+      <div>Yth. Management Digitaliz</div>
+      <div>di tempat</div>
+    </div>
+
+    <div class="letter-section">
+      <div>Dengan hormat,</div>
+      <div>yang bertanda tangan di bawah ini:</div>
+    </div>
+
+    <table class="letter-section" style="border-collapse:collapse;">
+      <tr><td style="font-weight:700;padding-right:24px;">Nama</td><td style="padding-right:10px;">:</td><td id="pdfName">Fachrie</td></tr>
+      <tr><td style="font-weight:700;padding-right:24px;">Divisi</td><td style="padding-right:10px;">:</td><td id="pdfDivision">Programmer</td></tr>
+      <tr><td style="font-weight:700;padding-right:24px;">NRP</td><td style="padding-right:10px;">:</td><td id="pdfNrp">DGT-001</td></tr>
+    </table>
+
+    <p class="letter-section">Bermaksud mengajukan pertukaran hari kerja dengan rincian berikut:</p>
+    <div class="letter-section letter-dates">
+      <div><strong>Hari Overtime</strong><div id="pdfOvertime" style="white-space:pre-line;"></div></div>
+      <div><strong>Hari Pengganti Libur</strong><div id="pdfReplacement" style="white-space:pre-line;"></div></div>
+    </div>
+    <p class="letter-section" style="text-align:justify;">Adapun alasan pengajuan ini adalah <span id="pdfReason" style="white-space:pre-wrap;overflow-wrap:anywhere;"></span></p>
+    <p class="letter-section" style="text-align:justify;">Demikian permohonan pertukaran hari kerja ini saya ajukan. Terima kasih atas perhatian dan pertimbangannya.</p>
+
+    <div class="letter-signature">
+      <div style="font-weight:700;">Management,</div>
+      <div class="signature-space"></div>
+      <div id="pdfSignature" style="font-weight:700;">Hengki Dwiyan Hermawan</div>
+    </div>
+
+    <div class="letter-footer"></div>
+  </article>
+  </section>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    document.querySelectorAll('.top-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.target;
+        document.querySelectorAll('.main-view').forEach(v => v.classList.remove('active'));
+        $(target).classList.add('active');
+        document.querySelectorAll('.top-tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll(`.top-tab[data-target="${target}"]`).forEach(b => b.classList.add('active'));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+
+    function toast(message) {
+      const el = $('toast');
+      el.textContent = message;
+      el.classList.remove('opacity-0','translate-y-4');
+      el.classList.add('opacity-100','translate-y-0');
+      setTimeout(() => {
+        el.classList.add('opacity-0','translate-y-4');
+        el.classList.remove('opacity-100','translate-y-0');
+      }, 2600);
+    }
+
+    // ponytail: data simulasi hanya selama halaman terbuka; gunakan API saat terhubung ke backend.
+    const requests = [
+      { id: 1, name: 'Rizky Pratama', division: 'Produksi', nrp: 'DGT-002', overtime: ['2026-09-06'], replacement: ['2026-09-07'], reason: 'Menyelesaikan kebutuhan produksi sebelum jadwal berikutnya.', note: '', status: 'pending', submitted: '4 September 2026, 09:42' },
+      { id: 2, name: 'Nadia Putri', division: 'Editor', nrp: 'DGT-003', overtime: ['2026-09-05', '2026-09-06'], replacement: ['2026-09-07', '2026-09-08'], reason: 'Menyelesaikan materi untuk jadwal publikasi.', note: '', status: 'approved', submitted: '3 September 2026, 14:10', approved: '4 September 2026' }
+    ];
+    let selectedRequestId = 1;
+    const escapeHTML = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+    const formatDate = value => new Date(value + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const formatSimpleDate = date => date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const dateList = values => values.map(formatDate).join('\n');
+    const getDates = name => Array.from(document.querySelectorAll(`input[name="${name}"]`), input => input.value);
+
+    function addDate(name) {
+      const row = $(name + 'Dates').firstElementChild.cloneNode(true);
+      row.querySelector('input').value = '';
+      $(name + 'Dates').append(row);
+      updateDates();
+      row.querySelector('input').focus();
+    }
+
+    function updateDates() {
+      ['overtime', 'replacement'].forEach(name => {
+        const rows = $(name + 'Dates').children;
+        Array.from(rows).forEach((row, index) => {
+          row.querySelector('button').disabled = rows.length === 1;
+          row.querySelector('input').setCustomValidity('');
+          row.querySelector('input').setAttribute('aria-label', `${name === 'overtime' ? 'Hari Overtime' : 'Hari Pengganti Libur'} ${index + 1}`);
+        });
+      });
+      const overtime = getDates('overtime').filter(Boolean);
+      const replacement = getDates('replacement').filter(Boolean);
+      $('swapSummary').textContent = `${overtime.length} hari overtime ditukar dengan ${replacement.length} hari pengganti libur. Hari libur pengganti berlaku setelah disetujui Management.`;
+    }
+
+    $('swapForm').addEventListener('click', event => {
+      if (!event.target.matches('[data-remove-date]')) return;
+      const group = event.target.closest('fieldset');
+      event.target.parentElement.remove();
+      updateDates();
+      group.querySelector('input').focus();
+    });
+    $('swapForm').addEventListener('input', () => {
+      updateDates();
+      $('swapReason').setCustomValidity('');
+    });
+    $('swapForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const overtime = getDates('overtime');
+      const replacement = getDates('replacement');
+      let error = '';
+      if (new Set(overtime).size !== overtime.length || new Set(replacement).size !== replacement.length) error = 'Tanggal tidak boleh berulang dalam daftar yang sama.';
+      else if (overtime.some(date => replacement.includes(date))) error = 'Hari overtime dan hari pengganti libur tidak boleh sama.';
+      else if (overtime.length !== replacement.length) error = 'Jumlah hari overtime dan hari pengganti libur harus sama.';
+      $('replacementDates').querySelector('input').setCustomValidity(error);
+      $('swapReason').setCustomValidity($('swapReason').value.trim() ? '' : 'Alasan wajib diisi.');
+      if (!$('swapForm').reportValidity()) return;
+      const request = {
+        id: requests.length + 1, name: $('swapName').value, division: $('swapDivision').value, nrp: $('swapNrp').value,
+        overtime: overtime.sort(), replacement: replacement.sort(), reason: $('swapReason').value.trim(), note: $('swapNote').value.trim(),
+        status: 'pending', submitted: new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })
+      };
+      requests.push(request);
+      selectedRequestId = request.id;
+      renderRequests();
+      toast('Pengajuan tukar hari kerja berhasil dikirim ke Management.');
+    });
+
+    function showManagementDetail(id) {
+      selectedRequestId = id;
+      renderRequests();
+    }
+
+    function renderRequests() {
+      const pending = requests.filter(request => request.status === 'pending');
+      const approved = requests.filter(request => request.status === 'approved');
+      $('pendingCount').textContent = pending.length;
+      $('approvedCount').textContent = approved.length;
+      $('rejectedCount').textContent = requests.filter(request => request.status === 'rejected').length;
+      $('totalCount').textContent = requests.length;
+      $('requestList').innerHTML = pending.map(request => `
+        <button onclick="showManagementDetail(${request.id})" aria-pressed="${request.id === selectedRequestId}" class="w-full rounded-2xl border-2 ${request.id === selectedRequestId ? 'border-indigo-500' : 'border-slate-200 hover:border-violet-300'} bg-white p-4 text-left shadow-sm">
+          <div class="mb-2 flex flex-wrap gap-2">
+            <span class="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-extrabold text-amber-700">Menunggu</span>
+            <span class="rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-extrabold text-violet-700">Tukar Hari Kerja</span>
+          </div>
+          <p class="font-extrabold text-slate-950">${escapeHTML(request.name)}</p>
+          <p class="mt-1 text-xs text-slate-500">${request.overtime.length} hari overtime / ${request.replacement.length} hari pengganti</p>
+          <p class="mt-4 break-words text-sm leading-6 text-slate-600">${escapeHTML(request.reason)}</p>
+        </button>`).join('') || '<p class="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500">Tidak ada pengajuan yang menunggu review.</p>';
+      const request = requests.find(item => item.id === selectedRequestId);
+      if (request) {
+        $('detailName').textContent = request.name;
+        $('detailDivision').textContent = request.division;
+        $('detailNrp').textContent = request.nrp;
+        $('detailSub').textContent = `Diajukan oleh ${request.name} pada ${request.submitted}`;
+        $('detailOvertime').textContent = dateList(request.overtime);
+        $('detailReplacement').textContent = dateList(request.replacement);
+        $('detailReason').textContent = request.reason;
+        $('detailNote').textContent = request.note || 'Tidak ada catatan.';
+        $('decisionNote').value = request.decisionNote || '';
+        $('decisionControls').classList.toggle('hidden', request.status !== 'pending');
+        $('detailStatus').textContent = { pending: 'Menunggu Persetujuan', approved: 'Disetujui', rejected: 'Ditolak' }[request.status];
+        $('detailStatus').className = 'rounded-full px-3 py-1 text-xs font-extrabold ' + { pending: 'bg-amber-50 text-amber-700', approved: 'bg-emerald-50 text-emerald-700', rejected: 'bg-rose-50 text-rose-700' }[request.status];
+      }
+      $('historyBody').innerHTML = approved.slice().reverse().map(request => `
+        <tr class="align-top hover:bg-slate-50">
+          <td class="px-5 py-4"><p class="font-bold text-slate-900">${escapeHTML(request.name)}</p><p class="mt-1 text-xs text-slate-500">${escapeHTML(request.nrp)}</p></td>
+          <td class="px-5 py-4">${escapeHTML(request.division)}</td>
+          <td class="whitespace-pre-line px-5 py-4 text-xs leading-6">${dateList(request.overtime)}</td>
+          <td class="whitespace-pre-line px-5 py-4 text-xs leading-6">${dateList(request.replacement)}</td>
+          <td class="max-w-xs break-words px-5 py-4 text-xs leading-6">${escapeHTML(request.reason)}</td>
+          <td class="px-5 py-4"><span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">Disetujui</span><p class="mt-2 text-xs text-slate-500">${escapeHTML(request.approved)}</p></td>
+          <td class="px-5 py-4"><button onclick="openLetter(${request.id})" aria-label="Lihat surat ${escapeHTML(request.name)}" class="whitespace-nowrap rounded-xl border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50">Lihat Surat</button></td>
+        </tr>`).join('') || '<tr><td colspan="7" class="px-5 py-8 text-center text-sm text-slate-500">Belum ada pengajuan yang disetujui.</td></tr>';
+      $('publicCards').innerHTML = approved.map(request => `
+        <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div><p class="font-extrabold text-slate-950">${escapeHTML(request.name)}</p><p class="mt-1 text-xs text-slate-500">${escapeHTML(request.division)}</p></div>
+            <span class="rounded-full bg-violet-50 px-3 py-1 text-xs font-extrabold text-violet-700">Tukar Hari Kerja</span>
+          </div>
+          <div class="mt-5 grid gap-3">
+            <div class="rounded-2xl bg-violet-50 p-4"><p class="text-xs font-bold text-violet-500">Hari Overtime</p><p class="mt-1 whitespace-pre-line text-sm font-extrabold text-violet-950">${dateList(request.overtime)}</p></div>
+            <div class="rounded-2xl bg-emerald-50 p-4"><p class="text-xs font-bold text-emerald-500">Libur Pengganti</p><p class="mt-1 whitespace-pre-line text-sm font-extrabold text-emerald-950">${dateList(request.replacement)}</p></div>
+          </div>
+        </article>`).join('') || '<p class="text-sm text-slate-500">Belum ada pertukaran hari kerja yang disetujui.</p>';
+    }
+
+    function decision(type) {
+      const request = requests.find(item => item.id === selectedRequestId);
+      if (!$('management').classList.contains('active') || !request || request.status !== 'pending') return;
+      request.status = type === 'approve' ? 'approved' : 'rejected';
+      request.decisionNote = $('decisionNote').value.trim();
+      if (type === 'approve') request.approved = formatSimpleDate(new Date());
+      renderRequests();
+      toast(type === 'approve' ? 'Pengajuan disetujui dan ditambahkan ke history.' : 'Pengajuan ditolak.');
+    }
+
+    function buildLetter(request) {
+      $('pdfDate').textContent = `Banjarmasin, ${formatSimpleDate(new Date())}`;
+      $('pdfName').textContent = request.name;
+      $('pdfDivision').textContent = request.division;
+      $('pdfNrp').textContent = request.nrp;
+      $('pdfOvertime').textContent = dateList(request.overtime);
+      $('pdfReplacement').textContent = dateList(request.replacement);
+      $('pdfReason').textContent = request.reason;
+    }
+
+    let letterTrigger;
+    let managementScrollY = 0;
+
+    function openLetter(id) {
+      if (!$('management').classList.contains('active')) return;
+      const request = requests.find(item => item.id === id);
+      if (!request) return;
+      buildLetter(request);
+      letterTrigger = document.activeElement;
+      managementScrollY = window.scrollY;
+      document.body.classList.add('viewing-letter');
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      $('closeLetter').focus({ preventScroll: true });
+    }
+
+    function closeLetter() {
+      document.body.classList.remove('viewing-letter');
+      window.scrollTo({ top: managementScrollY, behavior: 'instant' });
+      letterTrigger?.focus({ preventScroll: true });
+    }
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && document.body.classList.contains('viewing-letter')) closeLetter();
+    });
+    window.addEventListener('beforeprint', () => {
+      if (!$('management').classList.contains('active')) return;
+      if (!document.body.classList.contains('viewing-letter')) {
+        const request = requests.find(item => item.id === selectedRequestId);
+        if (!request) return;
+        buildLetter(request);
+      }
+      document.body.classList.add('printing-letter');
+    });
+    window.addEventListener('afterprint', () => document.body.classList.remove('printing-letter'));
+
+    updateDates();
+    renderRequests();
+
+  </script>
+</body>
+</html>
