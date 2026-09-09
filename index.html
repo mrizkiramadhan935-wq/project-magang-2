@@ -51,13 +51,11 @@
       line-height: 1.25;
     }
     #pdfLetter .letter-section { margin-top: 10px; }
-    #pdfLetter .letter-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     #pdfLetter .letter-signature { margin-top: 18px; break-inside: avoid; }
     #pdfLetter .signature-space { height: 40px; }
     #pdfLetter .letter-footer { position: absolute; left: 0; right: 0; bottom: 0; height: 12mm; background: #4f46e5; }
     @media screen and (max-width: 640px) {
       #pdfLetter { padding: 24px 24px 20mm; }
-      #pdfLetter .letter-dates { grid-template-columns: 1fr; }
     }
     @page { size: A4; margin: 0; }
     @media print {
@@ -73,6 +71,129 @@
         -webkit-print-color-adjust: exact;
       }
     }
+    .calendar-picker {
+      position: relative;
+    }
+    .calendar-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+      padding: 16px;
+      margin-top: 8px;
+    }
+    .calendar-dropdown.open { display: block; }
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .calendar-nav-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      border: none;
+      background: #f1f5f9;
+      color: #475569;
+      cursor: pointer;
+      font-weight: 700;
+      transition: all 0.15s;
+    }
+    .calendar-nav-btn:hover { background: #e2e8f0; }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .calendar-day-label {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+      padding: 4px 0;
+    }
+    .calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+      transition: all 0.15s;
+    }
+    .calendar-day:hover { background: #f1f5f9; }
+    .calendar-day.other-month { color: #cbd5e1; }
+    .calendar-day.today { border-color: #6366f1; color: #6366f1; }
+    .calendar-day.selected {
+      background: #6366f1;
+      color: white;
+      border-color: #6366f1;
+    }
+    .calendar-day.selected:hover { background: #4f46e5; }
+    .selected-dates-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 36px;
+    }
+    .selected-date-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #6366f1;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .selected-date-chip button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 10px;
+      line-height: 1;
+      padding: 0;
+      transition: background 0.15s;
+    }
+    .selected-date-chip button:hover { background: rgba(255,255,255,0.5); }
+    .selected-date-chip.replacement {
+      background: #10b981;
+    }
+    .clear-dates-btn {
+      font-size: 11px;
+      color: #ef4444;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .clear-dates-btn:hover { background: #fef2f2; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -159,25 +280,45 @@
               <div class="grid gap-5 sm:grid-cols-2">
                 <fieldset class="min-w-0">
                   <legend class="mb-2 text-sm font-bold text-slate-700">Hari Overtime</legend>
-                  <div id="overtimeDates" class="space-y-2">
-                    <div class="flex items-center gap-2">
-                      <input type="date" name="overtime" aria-label="Hari Overtime" required value="2026-09-06" class="min-w-0 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100">
-                      <button type="button" data-remove-date disabled aria-label="Hapus tanggal hari overtime" class="rounded-lg px-2 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-30">Hapus</button>
+                  <div class="calendar-picker" id="overtimeCalendar">
+                    <div class="selected-dates-container rounded-xl border border-slate-200 bg-white px-3 py-2 min-h-[48px] cursor-pointer" onclick="toggleCalendar('overtime')" id="overtimeChipContainer">
+                      <span class="text-xs text-slate-400">Klik untuk memilih tanggal...</span>
+                    </div>
+                    <div class="calendar-dropdown" id="overtimeDropdown">
+                      <div class="calendar-header">
+                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('overtime', -1)">‹</button>
+                        <span class="text-sm font-bold text-slate-800" id="overtimeMonthLabel"></span>
+                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('overtime', 1)">›</button>
+                      </div>
+                      <div class="calendar-grid" id="overtimeGrid"></div>
+                      <div class="mt-3 flex items-center justify-between">
+                        <button type="button" class="clear-dates-btn" onclick="clearDates('overtime')">Hapus Semua</button>
+                        <button type="button" class="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg hover:bg-indigo-100" onclick="toggleCalendar('overtime')">Selesai</button>
+                      </div>
                     </div>
                   </div>
-                  <button type="button" onclick="addDate('overtime')" class="mt-3 rounded-lg px-2 py-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50">+ Tambah Tanggal</button>
-                  <p class="mt-1 text-xs leading-5 text-slate-500">Bisa memilih lebih dari satu tanggal.</p>
+                  <p class="mt-1 text-xs leading-5 text-slate-500">Klik untuk memilih lebih dari satu tanggal.</p>
                 </fieldset>
                 <fieldset class="min-w-0">
                   <legend class="mb-2 text-sm font-bold text-slate-700">Hari Pengganti Libur</legend>
-                  <div id="replacementDates" class="space-y-2">
-                    <div class="flex items-center gap-2">
-                      <input type="date" name="replacement" aria-label="Hari Pengganti Libur" required value="2026-09-07" class="min-w-0 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100">
-                      <button type="button" data-remove-date disabled aria-label="Hapus tanggal hari pengganti libur" class="rounded-lg px-2 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-30">Hapus</button>
+                  <div class="calendar-picker" id="replacementCalendar">
+                    <div class="selected-dates-container rounded-xl border border-slate-200 bg-white px-3 py-2 min-h-[48px] cursor-pointer" onclick="toggleCalendar('replacement')" id="replacementChipContainer">
+                      <span class="text-xs text-slate-400">Klik untuk memilih tanggal...</span>
+                    </div>
+                    <div class="calendar-dropdown" id="replacementDropdown">
+                      <div class="calendar-header">
+                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('replacement', -1)">‹</button>
+                        <span class="text-sm font-bold text-slate-800" id="replacementMonthLabel"></span>
+                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('replacement', 1)">›</button>
+                      </div>
+                      <div class="calendar-grid" id="replacementGrid"></div>
+                      <div class="mt-3 flex items-center justify-between">
+                        <button type="button" class="clear-dates-btn" onclick="clearDates('replacement')">Hapus Semua</button>
+                        <button type="button" class="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg hover:bg-indigo-100" onclick="toggleCalendar('replacement')">Selesai</button>
+                      </div>
                     </div>
                   </div>
-                  <button type="button" onclick="addDate('replacement')" class="mt-3 rounded-lg px-2 py-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50">+ Tambah Tanggal</button>
-                  <p class="mt-1 text-xs leading-5 text-slate-500">Bisa memilih lebih dari satu tanggal.</p>
+                  <p class="mt-1 text-xs leading-5 text-slate-500">Klik untuk memilih lebih dari satu tanggal.</p>
                 </fieldset>
 
                 <label class="sm:col-span-2">
@@ -291,15 +432,17 @@
             </div>
 
             <div id="swapDetailContent" class="mt-6">
-              <div class="grid gap-3 sm:grid-cols-2">
-                <div class="rounded-2xl border border-violet-100 bg-violet-50 p-5">
-                  <p class="text-xs font-bold uppercase tracking-wider text-violet-500">Hari Overtime</p>
-                  <p id="detailOvertime" class="mt-2 whitespace-pre-line text-base font-extrabold text-violet-950">Minggu, 6 September 2026</p>
-                </div>
-                <div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
-                  <p class="text-xs font-bold uppercase tracking-wider text-emerald-500">Hari Pengganti Libur</p>
-                  <p id="detailReplacement" class="mt-2 whitespace-pre-line text-base font-extrabold text-emerald-950">Senin, 7 September 2026</p>
-                </div>
+              <div class="rounded-2xl border border-slate-200 overflow-hidden">
+                <table class="w-full text-sm">
+                  <thead class="bg-indigo-600 text-white">
+                    <tr>
+                      <th class="px-4 py-3 text-center w-12">No</th>
+                      <th class="px-4 py-3 text-center">Tanggal Tidak Bekerja</th>
+                      <th class="px-4 py-3 text-center">Hari Pengganti</th>
+                    </tr>
+                  </thead>
+                  <tbody id="detailDatesTable" class="divide-y divide-slate-100"></tbody>
+                </table>
               </div>
 
               <div class="mt-4 rounded-2xl border border-slate-200 p-4">
@@ -371,43 +514,95 @@
       <p class="text-sm text-slate-500">Tekan <kbd class="font-bold text-slate-800">Ctrl+P</kbd> untuk mencetak atau menyimpan sebagai PDF.</p>
     </div>
   <article id="pdfLetter" class="shadow-soft">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-weight:800;font-size:16px;color:#4f46e5;">FORMULIR TUKAR HARI KERJA</div>
+      <div style="font-size:11pt;color:#64748b;">Digitaliz - Hasnur Centre</div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;margin-bottom:20px;">
       <div id="pdfDate">Banjarmasin, 4 September 2026</div>
-      <div style="font-weight:700;color:#4f46e5;">DIGITALIZ</div>
+      <div style="font-size:10pt;color:#64748b;">No. Ref: <span id="pdfRef">TKH-2026-001</span></div>
     </div>
 
-    <div class="letter-section">
-      Hal&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <span id="pdfSubject">Pengajuan Tukar Hari Kerja</span>
+    <div class="letter-section" style="margin-top:10px;">
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;">
+        <tr>
+          <td style="width:30%;padding:10px 15px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:700;">Nama Lengkap</td>
+          <td style="padding:10px 15px;border:1px solid #e2e8f0;" id="pdfName">Fachrie</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 15px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:700;">Divisi / Departemen</td>
+          <td style="padding:10px 15px;border:1px solid #e2e8f0;" id="pdfDivision">Programmer</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 15px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:700;">NRP</td>
+          <td style="padding:10px 15px;border:1px solid #e2e8f0;" id="pdfNrp">DGT-001</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 15px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:700;">Jabatan</td>
+          <td style="padding:10px 15px;border:1px solid #e2e8f0;" id="pdfPosition">Programmer</td>
+        </tr>
+      </table>
     </div>
 
-    <div class="letter-section">
-      <div>Yth. Management Digitaliz</div>
-      <div>di tempat</div>
+    <div class="letter-section" style="margin-top:20px;">
+      <p style="font-weight:700;margin-bottom:10px;">Alasan Bekerja di Hari Libur:</p>
+      <div style="border:1px solid #e2e8f0;padding:12px 15px;border-radius:8px;background:#fafafa;min-height:60px;">
+        <span id="pdfReason" style="white-space:pre-wrap;overflow-wrap:anywhere;">Menyelesaikan pekerjaan yang harus selesai sebelum jadwal produksi berikutnya.</span>
+      </div>
     </div>
 
-    <div class="letter-section">
-      <div>Dengan hormat,</div>
-      <div>yang bertanda tangan di bawah ini:</div>
+    <div class="letter-section" style="margin-top:20px;">
+      <p style="font-weight:700;margin-bottom:10px;">Rincian Tanggal Tidak Bekerja dan Hari Pengganti:</p>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;">
+        <thead>
+          <tr style="background:#4f46e5;color:white;">
+            <th style="padding:10px 15px;border:1px solid #e2e8f0;width:8%;text-align:center;">No</th>
+            <th style="padding:10px 15px;border:1px solid #e2e8f0;width:42%;text-align:center;">Tanggal Tidak Bekerja (Hari Libur)</th>
+            <th style="padding:10px 15px;border:1px solid #e2e8f0;width:42%;text-align:center;">Hari Pengganti (Hari Kerja)</th>
+            <th style="padding:10px 15px;border:1px solid #e2e8f0;width:8%;text-align:center;">Ket</th>
+          </tr>
+        </thead>
+        <tbody id="pdfDatesTable">
+          <tr>
+            <td style="padding:10px 15px;border:1px solid #e2e8f0;text-align:center;">1</td>
+            <td style="padding:10px 15px;border:1px solid #e2e8f0;" id="pdfOvertime1">Minggu, 6 September 2026</td>
+            <td style="padding:10px 15px;border:1px solid #e2e8f0;" id="pdfReplacement1">Senin, 7 September 2026</td>
+            <td style="padding:10px 15px;border:1px solid #e2e8f0;text-align:center;">✓</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <table class="letter-section" style="border-collapse:collapse;">
-      <tr><td style="font-weight:700;padding-right:24px;">Nama</td><td style="padding-right:10px;">:</td><td id="pdfName">Fachrie</td></tr>
-      <tr><td style="font-weight:700;padding-right:24px;">Divisi</td><td style="padding-right:10px;">:</td><td id="pdfDivision">Programmer</td></tr>
-      <tr><td style="font-weight:700;padding-right:24px;">NRP</td><td style="padding-right:10px;">:</td><td id="pdfNrp">DGT-001</td></tr>
-    </table>
-
-    <p class="letter-section">Bermaksud mengajukan pertukaran hari kerja dengan rincian berikut:</p>
-    <div class="letter-section letter-dates">
-      <div><strong>Hari Overtime</strong><div id="pdfOvertime" style="white-space:pre-line;"></div></div>
-      <div><strong>Hari Pengganti Libur</strong><div id="pdfReplacement" style="white-space:pre-line;"></div></div>
+    <div class="letter-section" style="margin-top:20px;">
+      <p style="font-weight:700;margin-bottom:10px;">Catatan dari Manajemen:</p>
+      <div style="border:1px solid #e2e8f0;padding:12px 15px;border-radius:8px;background:#fafafa;min-height:60px;">
+        <span id="pdfManagementNote" style="white-space:pre-wrap;overflow-wrap:anywhere;color:#64748b;font-style:italic;">-</span>
+      </div>
     </div>
-    <p class="letter-section" style="text-align:justify;">Adapun alasan pengajuan ini adalah <span id="pdfReason" style="white-space:pre-wrap;overflow-wrap:anywhere;"></span></p>
-    <p class="letter-section" style="text-align:justify;">Demikian permohonan pertukaran hari kerja ini saya ajukan. Terima kasih atas perhatian dan pertimbangannya.</p>
 
-    <div class="letter-signature">
-      <div style="font-weight:700;">Management,</div>
-      <div class="signature-space"></div>
-      <div id="pdfSignature" style="font-weight:700;">Hengki Dwiyan Hermawan</div>
+    <div class="letter-section" style="margin-top:30px;">
+      <p style="font-weight:700;margin-bottom:15px;">Tanda Tangan:</p>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="width:50%;vertical-align:top;padding-right:20px;">
+            <div style="text-align:center;margin-bottom:8px;font-weight:700;">Pemohon</div>
+            <div style="height:120px;"></div>
+            <div style="text-align:center;">
+              <div style="font-weight:700;" id="pdfSignatureApplicant">Fachrie</div>
+              <div style="font-size:10pt;color:#64748b;" id="pdfSignatureDateApplicant">4 September 2026</div>
+            </div>
+          </td>
+          <td style="width:50%;vertical-align:top;padding-left:20px;">
+            <div style="text-align:center;margin-bottom:8px;font-weight:700;">Menyetujui,</div>
+            <div style="height:120px;"></div>
+            <div style="text-align:center;">
+              <div style="font-weight:700;" id="pdfSignatureManager">Hengki Dwiyan Hermawan</div>
+              <div style="font-size:10pt;color:#64748b;">Management</div>
+            </div>
+          </td>
+        </tr>
+      </table>
     </div>
 
     <div class="letter-footer"></div>
@@ -439,7 +634,6 @@
       }, 2600);
     }
 
-    // ponytail: data simulasi hanya selama halaman terbuka; gunakan API saat terhubung ke backend.
     const requests = [
       { id: 1, name: 'Rizky Pratama', division: 'Produksi', nrp: 'DGT-002', overtime: ['2026-09-06'], replacement: ['2026-09-07'], reason: 'Menyelesaikan kebutuhan produksi sebelum jadwal berikutnya.', note: '', status: 'pending', submitted: '4 September 2026, 09:42' },
       { id: 2, name: 'Nadia Putri', division: 'Editor', nrp: 'DGT-003', overtime: ['2026-09-05', '2026-09-06'], replacement: ['2026-09-07', '2026-09-08'], reason: 'Menyelesaikan materi untuk jadwal publikasi.', note: '', status: 'approved', submitted: '3 September 2026, 14:10', approved: '4 September 2026' }
@@ -449,61 +643,167 @@
     const formatDate = value => new Date(value + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const formatSimpleDate = date => date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
     const dateList = values => values.map(formatDate).join('\n');
-    const getDates = name => Array.from(document.querySelectorAll(`input[name="${name}"]`), input => input.value);
 
-    function addDate(name) {
-      const row = $(name + 'Dates').firstElementChild.cloneNode(true);
-      row.querySelector('input').value = '';
-      $(name + 'Dates').append(row);
-      updateDates();
-      row.querySelector('input').focus();
+    // Multi-date calendar picker
+    const calendarState = {
+      overtime: { selected: ['2026-09-06'], currentMonth: 8, currentYear: 2026 },
+      replacement: { selected: ['2026-09-07'], currentMonth: 8, currentYear: 2026 }
+    };
+    const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const dayLabels = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+
+    function formatDateValue(dateStr) {
+      return new Date(dateStr + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
     }
 
-    function updateDates() {
-      ['overtime', 'replacement'].forEach(name => {
-        const rows = $(name + 'Dates').children;
-        Array.from(rows).forEach((row, index) => {
-          row.querySelector('button').disabled = rows.length === 1;
-          row.querySelector('input').setCustomValidity('');
-          row.querySelector('input').setAttribute('aria-label', `${name === 'overtime' ? 'Hari Overtime' : 'Hari Pengganti Libur'} ${index + 1}`);
-        });
-      });
-      const overtime = getDates('overtime').filter(Boolean);
-      const replacement = getDates('replacement').filter(Boolean);
+    function getDaysInMonth(year, month) {
+      return new Date(year, month + 1, 0).getDate();
+    }
+
+    function getFirstDayOfMonth(year, month) {
+      return new Date(year, month, 1).getDay();
+    }
+
+    function toggleCalendar(type) {
+      const dropdown = $(type + 'Dropdown');
+      dropdown.classList.toggle('open');
+      if (dropdown.classList.contains('open')) {
+        renderCalendar(type);
+      }
+    }
+
+    function navigateMonth(type, direction) {
+      const state = calendarState[type];
+      state.currentMonth += direction;
+      if (state.currentMonth > 11) { state.currentMonth = 0; state.currentYear++; }
+      if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
+      renderCalendar(type);
+    }
+
+    function renderCalendar(type) {
+      const state = calendarState[type];
+      const grid = $(type + 'Grid');
+      const label = $(type + 'MonthLabel');
+      
+      label.textContent = `${monthNames[state.currentMonth]} ${state.currentYear}`;
+      
+      const daysInMonth = getDaysInMonth(state.currentYear, state.currentMonth);
+      const firstDay = getFirstDayOfMonth(state.currentYear, state.currentMonth);
+      const prevMonthDays = getDaysInMonth(state.currentYear, state.currentMonth - 1);
+      
+      let html = dayLabels.map(d => `<div class="calendar-day-label">${d}</div>`).join('');
+      
+      // Previous month days
+      for (let i = firstDay - 1; i >= 0; i--) {
+        html += `<button type="button" class="calendar-day other-month">${prevMonthDays - i}</button>`;
+      }
+      
+      // Current month days
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${state.currentYear}-${String(state.currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const isSelected = state.selected.includes(dateStr);
+        const isToday = dateStr === todayStr;
+        const classes = ['calendar-day'];
+        if (isToday) classes.push('today');
+        if (isSelected) classes.push('selected');
+        html += `<button type="button" class="${classes.join(' ')}" onclick="selectDate('${type}', '${dateStr}')">${day}</button>`;
+      }
+      
+      // Next month days
+      const totalCells = firstDay + daysInMonth;
+      const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+      for (let i = 1; i <= remaining; i++) {
+        html += `<button type="button" class="calendar-day other-month">${i}</button>`;
+      }
+      
+      grid.innerHTML = html;
+      renderChips(type);
+    }
+
+    function selectDate(type, dateStr) {
+      const state = calendarState[type];
+      const index = state.selected.indexOf(dateStr);
+      if (index > -1) {
+        state.selected.splice(index, 1);
+      } else {
+        state.selected.push(dateStr);
+      }
+      renderCalendar(type);
+      updateSummary();
+    }
+
+    function removeDate(type, dateStr) {
+      const state = calendarState[type];
+      const index = state.selected.indexOf(dateStr);
+      if (index > -1) state.selected.splice(index, 1);
+      renderCalendar(type);
+      updateSummary();
+    }
+
+    function clearDates(type) {
+      calendarState[type].selected = [];
+      renderCalendar(type);
+      updateSummary();
+    }
+
+    function renderChips(type) {
+      const state = calendarState[type];
+      const container = $(type + 'ChipContainer');
+      const chipClass = type === 'replacement' ? 'replacement' : '';
+      
+      if (state.selected.length === 0) {
+        container.innerHTML = '<span class="text-xs text-slate-400">Klik untuk memilih tanggal...</span>';
+      } else {
+        const sorted = [...state.selected].sort();
+        container.innerHTML = sorted.map(dateStr => 
+          `<span class="selected-date-chip ${chipClass}">${formatDateValue(dateStr)}<button type="button" onclick="event.stopPropagation(); removeDate('${type}', '${dateStr}')" aria-label="Hapus tanggal">×</button></span>`
+        ).join('');
+      }
+    }
+
+    function getSelectedDates(type) {
+      return [...calendarState[type].selected].sort();
+    }
+
+    function updateSummary() {
+      const overtime = getSelectedDates('overtime');
+      const replacement = getSelectedDates('replacement');
       $('swapSummary').textContent = `${overtime.length} hari overtime ditukar dengan ${replacement.length} hari pengganti libur. Hari libur pengganti berlaku setelah disetujui Management.`;
     }
 
-    $('swapForm').addEventListener('click', event => {
-      if (!event.target.matches('[data-remove-date]')) return;
-      const group = event.target.closest('fieldset');
-      event.target.parentElement.remove();
-      updateDates();
-      group.querySelector('input').focus();
-    });
-    $('swapForm').addEventListener('input', () => {
-      updateDates();
-      $('swapReason').setCustomValidity('');
-    });
     $('swapForm').addEventListener('submit', event => {
       event.preventDefault();
-      const overtime = getDates('overtime');
-      const replacement = getDates('replacement');
+      const overtime = getSelectedDates('overtime');
+      const replacement = getSelectedDates('replacement');
       let error = '';
-      if (new Set(overtime).size !== overtime.length || new Set(replacement).size !== replacement.length) error = 'Tanggal tidak boleh berulang dalam daftar yang sama.';
-      else if (overtime.some(date => replacement.includes(date))) error = 'Hari overtime dan hari pengganti libur tidak boleh sama.';
+      if (overtime.some(date => replacement.includes(date))) error = 'Hari overtime dan hari pengganti libur tidak boleh sama.';
+      else if (overtime.length === 0 || replacement.length === 0) error = 'Pilih minimal satu tanggal untuk overtime dan pengganti libur.';
       else if (overtime.length !== replacement.length) error = 'Jumlah hari overtime dan hari pengganti libur harus sama.';
-      $('replacementDates').querySelector('input').setCustomValidity(error);
+      if (error) { toast(error); return; }
       $('swapReason').setCustomValidity($('swapReason').value.trim() ? '' : 'Alasan wajib diisi.');
       if (!$('swapForm').reportValidity()) return;
       const request = {
         id: requests.length + 1, name: $('swapName').value, division: $('swapDivision').value, nrp: $('swapNrp').value,
-        overtime: overtime.sort(), replacement: replacement.sort(), reason: $('swapReason').value.trim(), note: $('swapNote').value.trim(),
+        overtime, replacement, reason: $('swapReason').value.trim(), note: $('swapNote').value.trim(),
         status: 'pending', submitted: new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })
       };
       requests.push(request);
       selectedRequestId = request.id;
       renderRequests();
       toast('Pengajuan tukar hari kerja berhasil dikirim ke Management.');
+    });
+
+    document.addEventListener('click', (e) => {
+      ['overtime', 'replacement'].forEach(type => {
+        const picker = $(type + 'Calendar');
+        const dropdown = $(type + 'Dropdown');
+        if (!picker.contains(e.target) && dropdown.classList.contains('open')) {
+          dropdown.classList.remove('open');
+        }
+      });
     });
 
     function showManagementDetail(id) {
@@ -518,7 +818,10 @@
       $('approvedCount').textContent = approved.length;
       $('rejectedCount').textContent = requests.filter(request => request.status === 'rejected').length;
       $('totalCount').textContent = requests.length;
-      $('requestList').innerHTML = pending.map(request => `
+      $('requestList').innerHTML = pending.map(request => {
+        const overtimeDates = request.overtime.map(d => formatDate(d)).join(', ');
+        const replacementDates = request.replacement.map(d => formatDate(d)).join(', ');
+        return `
         <button onclick="showManagementDetail(${request.id})" aria-pressed="${request.id === selectedRequestId}" class="w-full rounded-2xl border-2 ${request.id === selectedRequestId ? 'border-indigo-500' : 'border-slate-200 hover:border-violet-300'} bg-white p-4 text-left shadow-sm">
           <div class="mb-2 flex flex-wrap gap-2">
             <span class="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-extrabold text-amber-700">Menunggu</span>
@@ -527,43 +830,62 @@
           <p class="font-extrabold text-slate-950">${escapeHTML(request.name)}</p>
           <p class="mt-1 text-xs text-slate-500">${request.overtime.length} hari overtime / ${request.replacement.length} hari pengganti</p>
           <p class="mt-4 break-words text-sm leading-6 text-slate-600">${escapeHTML(request.reason)}</p>
-        </button>`).join('') || '<p class="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500">Tidak ada pengajuan yang menunggu review.</p>';
+        </button>`}).join('') || '<p class="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-500">Tidak ada pengajuan yang menunggu review.</p>';
       const request = requests.find(item => item.id === selectedRequestId);
       if (request) {
         $('detailName').textContent = request.name;
         $('detailDivision').textContent = request.division;
         $('detailNrp').textContent = request.nrp;
         $('detailSub').textContent = `Diajukan oleh ${request.name} pada ${request.submitted}`;
-        $('detailOvertime').textContent = dateList(request.overtime);
-        $('detailReplacement').textContent = dateList(request.replacement);
         $('detailReason').textContent = request.reason;
         $('detailNote').textContent = request.note || 'Tidak ada catatan.';
         $('decisionNote').value = request.decisionNote || '';
         $('decisionControls').classList.toggle('hidden', request.status !== 'pending');
         $('detailStatus').textContent = { pending: 'Menunggu Persetujuan', approved: 'Disetujui', rejected: 'Ditolak' }[request.status];
         $('detailStatus').className = 'rounded-full px-3 py-1 text-xs font-extrabold ' + { pending: 'bg-amber-50 text-amber-700', approved: 'bg-emerald-50 text-emerald-700', rejected: 'bg-rose-50 text-rose-700' }[request.status];
+
+        const maxLen = Math.max(request.overtime.length, request.replacement.length);
+        let tableHTML = '';
+        for (let i = 0; i < maxLen; i++) {
+          const overtimeDate = request.overtime[i] ? formatDate(request.overtime[i]) : '-';
+          const replacementDate = request.replacement[i] ? formatDate(request.replacement[i]) : '-';
+          const bgClass = i % 2 === 0 ? 'bg-white' : 'bg-slate-50';
+          tableHTML += `
+            <tr class="${bgClass}">
+              <td class="px-4 py-3 text-center">${i + 1}</td>
+              <td class="px-4 py-3">${overtimeDate}</td>
+              <td class="px-4 py-3">${replacementDate}</td>
+            </tr>`;
+        }
+        $('detailDatesTable').innerHTML = tableHTML || '<tr><td colspan="3" class="px-4 py-6 text-center text-slate-500">Belum ada tanggal dipilih.</td></tr>';
       }
-      $('historyBody').innerHTML = approved.slice().reverse().map(request => `
+      $('historyBody').innerHTML = approved.slice().reverse().map(request => {
+        const overtimeDates = request.overtime.map(d => formatDate(d)).join(', ');
+        const replacementDates = request.replacement.map(d => formatDate(d)).join(', ');
+        return `
         <tr class="align-top hover:bg-slate-50">
           <td class="px-5 py-4"><p class="font-bold text-slate-900">${escapeHTML(request.name)}</p><p class="mt-1 text-xs text-slate-500">${escapeHTML(request.nrp)}</p></td>
           <td class="px-5 py-4">${escapeHTML(request.division)}</td>
-          <td class="whitespace-pre-line px-5 py-4 text-xs leading-6">${dateList(request.overtime)}</td>
-          <td class="whitespace-pre-line px-5 py-4 text-xs leading-6">${dateList(request.replacement)}</td>
+          <td class="whitespace-pre-line px-5 py-4 text-xs leading-6">${overtimeDates}</td>
+          <td class="whitespace-pre-line px-5 py-4 text-xs leading-6">${replacementDates}</td>
           <td class="max-w-xs break-words px-5 py-4 text-xs leading-6">${escapeHTML(request.reason)}</td>
           <td class="px-5 py-4"><span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">Disetujui</span><p class="mt-2 text-xs text-slate-500">${escapeHTML(request.approved)}</p></td>
           <td class="px-5 py-4"><button onclick="openLetter(${request.id})" aria-label="Lihat surat ${escapeHTML(request.name)}" class="whitespace-nowrap rounded-xl border border-indigo-200 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-50">Lihat Surat</button></td>
-        </tr>`).join('') || '<tr><td colspan="7" class="px-5 py-8 text-center text-sm text-slate-500">Belum ada pengajuan yang disetujui.</td></tr>';
-      $('publicCards').innerHTML = approved.map(request => `
+        </tr>`}).join('') || '<tr><td colspan="7" class="px-5 py-8 text-center text-sm text-slate-500">Belum ada pengajuan yang disetujui.</td></tr>';
+      $('publicCards').innerHTML = approved.map(request => {
+        const overtimeDates = request.overtime.map(d => formatDate(d)).join(', ');
+        const replacementDates = request.replacement.map(d => formatDate(d)).join(', ');
+        return `
         <article class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div><p class="font-extrabold text-slate-950">${escapeHTML(request.name)}</p><p class="mt-1 text-xs text-slate-500">${escapeHTML(request.division)}</p></div>
             <span class="rounded-full bg-violet-50 px-3 py-1 text-xs font-extrabold text-violet-700">Tukar Hari Kerja</span>
           </div>
           <div class="mt-5 grid gap-3">
-            <div class="rounded-2xl bg-violet-50 p-4"><p class="text-xs font-bold text-violet-500">Hari Overtime</p><p class="mt-1 whitespace-pre-line text-sm font-extrabold text-violet-950">${dateList(request.overtime)}</p></div>
-            <div class="rounded-2xl bg-emerald-50 p-4"><p class="text-xs font-bold text-emerald-500">Libur Pengganti</p><p class="mt-1 whitespace-pre-line text-sm font-extrabold text-emerald-950">${dateList(request.replacement)}</p></div>
+            <div class="rounded-2xl bg-violet-50 p-4"><p class="text-xs font-bold text-violet-500">Hari Overtime</p><p class="mt-1 text-sm font-extrabold text-violet-950">${overtimeDates}</p></div>
+            <div class="rounded-2xl bg-emerald-50 p-4"><p class="text-xs font-bold text-emerald-500">Libur Pengganti</p><p class="mt-1 text-sm font-extrabold text-emerald-950">${replacementDates}</p></div>
           </div>
-        </article>`).join('') || '<p class="text-sm text-slate-500">Belum ada pertukaran hari kerja yang disetujui.</p>';
+        </article>`}).join('') || '<p class="text-sm text-slate-500">Belum ada pertukaran hari kerja yang disetujui.</p>';
     }
 
     function decision(type) {
@@ -581,9 +903,30 @@
       $('pdfName').textContent = request.name;
       $('pdfDivision').textContent = request.division;
       $('pdfNrp').textContent = request.nrp;
-      $('pdfOvertime').textContent = dateList(request.overtime);
-      $('pdfReplacement').textContent = dateList(request.replacement);
+      $('pdfPosition').textContent = request.division;
       $('pdfReason').textContent = request.reason;
+
+      const maxLen = Math.max(request.overtime.length, request.replacement.length);
+      let tableHTML = '';
+      for (let i = 0; i < maxLen; i++) {
+        const overtimeDate = request.overtime[i] ? formatDate(request.overtime[i]) : '-';
+        const replacementDate = request.replacement[i] ? formatDate(request.replacement[i]) : '-';
+        tableHTML += `
+          <tr>
+            <td style="padding:10px 15px;border:1px solid #e2e8f0;text-align:center;">${i + 1}</td>
+            <td style="padding:10px 15px;border:1px solid #e2e8f0;">${overtimeDate}</td>
+            <td style="padding:10px 15px;border:1px solid #e2e8f0;">${replacementDate}</td>
+            <td style="padding:10px 15px;border:1px solid #e2e8f0;text-align:center;">✓</td>
+          </tr>`;
+      }
+      $('pdfDatesTable').innerHTML = tableHTML;
+
+      $('pdfManagementNote').textContent = request.decisionNote || '-';
+      $('pdfSignatureApplicant').textContent = request.name;
+      $('pdfSignatureDateApplicant').textContent = formatSimpleDate(new Date());
+      if (request.approved) {
+        $('pdfSignatureManager').textContent = 'Hengki Dwiyan Hermawan';
+      }
     }
 
     let letterTrigger;
@@ -621,7 +964,9 @@
     });
     window.addEventListener('afterprint', () => document.body.classList.remove('printing-letter'));
 
-    updateDates();
+    renderCalendar('overtime');
+    renderCalendar('replacement');
+    updateSummary();
     renderRequests();
 
   </script>
